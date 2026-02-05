@@ -21,7 +21,7 @@ export async function generateGameCard(gameState: GameState): Promise<Partial<Ca
 
   // Randomly select a location and character context to spice up the prompt
   const randomLocation = LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)];
-  const characterKeys = Object.keys(CHARACTERS);
+  const characterKeys = Object.keys(CHARACTERS) as Array<keyof typeof CHARACTERS>;
   const randomCharKey = characterKeys[Math.floor(Math.random() * characterKeys.length)];
   const suggestedChar = CHARACTERS[randomCharKey];
 
