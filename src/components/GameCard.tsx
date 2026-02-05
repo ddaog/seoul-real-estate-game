@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, useMotionValue, useTransform } from 'framer-motion';
 import type { PanInfo } from 'framer-motion';
 import type { Card } from '../types';
+import { DETAILED_CHARACTERS } from '../constants/characters';
 
 interface GameCardProps {
     card: Card;
@@ -22,17 +23,11 @@ const GameCard: React.FC<GameCardProps> = ({ card, onSwipe }) => {
         }
     };
 
-    // Extract emoji from character name or use default
-    const getCharacterEmoji = (job: string) => {
-        const emojiMap: Record<string, string> = {
-            '부동산 공인중개사': '🏢',
-            '유튜브 경제 렉카': '📉',
-            '은행 대출 창구 직원': '🏦',
-            '강남 빌딩 주인': '👵',
-            '입사 동기': '🤝',
-            '학군지 거주자': '👩‍👧'
-        };
-        return emojiMap[job] || '🗣️';
+    // Extract emoji from character based on their profile
+    const getCharacterEmoji = (job: string): string => {
+        // Match by job from DETAILED_CHARACTERS
+        const character = Object.values(DETAILED_CHARACTERS).find(char => char.job === job);
+        return character?.emoji || '🗣️';
     };
 
     return (
