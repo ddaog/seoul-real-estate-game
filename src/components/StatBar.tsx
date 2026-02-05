@@ -1,5 +1,5 @@
 import React from 'react';
-import { Stats } from '../types';
+import type { Stats } from '../types';
 
 interface StatBarProps {
     stats: Stats;

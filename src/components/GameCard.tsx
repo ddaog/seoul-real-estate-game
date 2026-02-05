@@ -1,6 +1,7 @@
 import React from 'react';
-import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
-import { Card } from '../types';
+import { motion, useMotionValue, useTransform } from 'framer-motion';
+import type { PanInfo } from 'framer-motion';
+import type { Card } from '../types';
 
 interface GameCardProps {
     card: Card;
@@ -13,7 +14,7 @@ const GameCard: React.FC<GameCardProps> = ({ card, onSwipe }) => {
     const opacityLeft = useTransform(x, [-150, 0], [1, 0]);
     const opacityRight = useTransform(x, [0, 150], [0, 1]);
 
-    const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
         if (info.offset.x > 100) {
             onSwipe('right');
         } else if (info.offset.x < -100) {

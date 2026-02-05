@@ -1,4 +1,4 @@
-import { Stats, HeroPathStage } from './types';
+import type { Stats, HeroPathStage } from './types';
 
 export const INITIAL_STATS: Stats = {
   asset: 50,
