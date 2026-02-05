@@ -22,6 +22,19 @@ const GameCard: React.FC<GameCardProps> = ({ card, onSwipe }) => {
         }
     };
 
+    // Extract emoji from character name or use default
+    const getCharacterEmoji = (job: string) => {
+        const emojiMap: Record<string, string> = {
+            '부동산 공인중개사': '🏢',
+            '유튜브 경제 렉카': '📉',
+            '은행 대출 창구 직원': '🏦',
+            '강남 빌딩 주인': '👵',
+            '입사 동기': '🤝',
+            '학군지 거주자': '👩‍👧'
+        };
+        return emojiMap[job] || '🗣️';
+    };
+
     return (
         <div className="relative w-full max-w-sm h-[600px] flex items-center justify-center">
             {/* Background/Deck Stack Effect */}
@@ -29,23 +42,21 @@ const GameCard: React.FC<GameCardProps> = ({ card, onSwipe }) => {
 
             <motion.div
                 drag="x"
-                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.7}
                 style={{ x, rotate }}
                 onDragEnd={handleDragEnd}
                 className="relative w-full h-full bg-white rounded-xl shadow-2xl overflow-hidden cursor-grab active:cursor-grabbing border border-gray-200"
             >
-                {/* Character Image Area */}
-                <div className="relative h-3/5 w-full bg-gray-100 overflow-hidden">
-                    <img
-                        src={card.image}
-                        alt="Scenario"
-                        className="w-full h-full object-cover pointer-events-none"
-                    />
+                {/* Character Emoji Area */}
+                <div className="relative h-3/5 w-full bg-gradient-to-br from-blue-50 to-purple-50 overflow-hidden flex items-center justify-center">
+                    <div className="text-[180px] select-none opacity-90">
+                        {getCharacterEmoji(card.character.job)}
+                    </div>
 
                     {/* Swipe Overlays */}
                     <motion.div
                         style={{ opacity: opacityRight }}
-                        className="absolute top-4 left-4 border-4 border-green-500 rounded-lg p-2 transform -rotate-12 z-10"
+                        className="absolute top-4 left-4 border-4 border-green-500 rounded-lg p-2 transform -rotate-12 z-10 bg-white/90"
                     >
                         <span className="text-2xl font-bold text-green-500 uppercase tracking-widest">
                             {card.rightChoice.text}
@@ -54,7 +65,7 @@ const GameCard: React.FC<GameCardProps> = ({ card, onSwipe }) => {
 
                     <motion.div
                         style={{ opacity: opacityLeft }}
-                        className="absolute top-4 right-4 border-4 border-red-500 rounded-lg p-2 transform rotate-12 z-10"
+                        className="absolute top-4 right-4 border-4 border-red-500 rounded-lg p-2 transform rotate-12 z-10 bg-white/90"
                     >
                         <span className="text-2xl font-bold text-red-500 uppercase tracking-widest">
                             {card.leftChoice.text}
@@ -66,7 +77,7 @@ const GameCard: React.FC<GameCardProps> = ({ card, onSwipe }) => {
                 <div className="h-2/5 p-6 flex flex-col justify-between bg-white text-gray-900">
                     <div>
                         <h2 className="text-xl font-bold mb-1 flex items-center gap-2">
-                            <span className="text-2xl">🗣️</span>
+                            <span className="text-2xl">{getCharacterEmoji(card.character.job)}</span>
                             {card.character.name}
                             <span className="text-sm font-normal text-gray-500">({card.character.job})</span>
                         </h2>
@@ -77,7 +88,7 @@ const GameCard: React.FC<GameCardProps> = ({ card, onSwipe }) => {
                     </div>
 
                     <div className="text-center text-sm text-gray-400 mt-4">
-                        좌우로 밀어서 선택하세요
+                        👈 좌우로 밀어서 선택하세요 👉
                     </div>
                 </div>
             </motion.div>
