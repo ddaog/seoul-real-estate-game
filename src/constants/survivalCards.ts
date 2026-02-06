@@ -1,12 +1,20 @@
-import type { Card } from '../types';
+import type { Card, Character } from '../types';
 import { DETAILED_CHARACTERS } from './characters';
 
-const NARRATOR = DETAILED_CHARACTERS.PARK_BOKDEOK;
-const YOUNGKKEUL = DETAILED_CHARACTERS.KIM_YOUNGKKEUL;
-const LOAN_OFFICER = DETAILED_CHARACTERS.LEE_DAECHUL;
-const GANGNAM_UMMA = DETAILED_CHARACTERS.GANGNAM_UMMA;
-const JEONSE_REFUGEE = DETAILED_CHARACTERS.JEONSE_REFUGEE;
-const BUILDING_HALMAE = DETAILED_CHARACTERS.BUILDING_HALMAE;
+const toCharacter = (profile: typeof DETAILED_CHARACTERS[keyof typeof DETAILED_CHARACTERS]): Character => ({
+    id: profile.id,
+    name: profile.name,
+    job: profile.job,
+    description: profile.backstory,
+    tone: profile.speechPattern.tone
+});
+
+const NARRATOR = toCharacter(DETAILED_CHARACTERS.PARK_BOKDEOK);
+const YOUNGKKEUL = toCharacter(DETAILED_CHARACTERS.KIM_YOUNGKKEUL);
+const LOAN_OFFICER = toCharacter(DETAILED_CHARACTERS.LEE_DAECHUL);
+const GANGNAM_UMMA = toCharacter(DETAILED_CHARACTERS.GANGNAM_UMMA);
+const JEONSE_REFUGEE = toCharacter(DETAILED_CHARACTERS.JEONSE_REFUGEE);
+const BUILDING_HALMAE = toCharacter(DETAILED_CHARACTERS.BUILDING_HALMAE);
 
 export const SURVIVAL_CARDS: Card[] = [
     {

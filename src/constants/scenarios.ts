@@ -1,13 +1,13 @@
 import type { Character, HeroPathStage, Stats } from '../types';
 import { CHARACTERS } from './characters';
 
-type LegacyChoice = {
+export type LegacyChoice = {
     text: string;
     line?: string;
     effect: Partial<Stats>;
 };
 
-type LegacyCard = {
+export type LegacyCard = {
     title?: string;
     text: string;
     character: Character;

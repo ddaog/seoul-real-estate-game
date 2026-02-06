@@ -3,7 +3,7 @@ import type { Card, GameState, HeroPathStage } from "../types";
 import { SYSTEM_PROMPT, STAGE_DESCRIPTIONS } from "../constants";
 import { CHARACTERS } from "../constants/characters";
 import { LOCATIONS } from "../constants/locations";
-import { REPORTAGE_SCENARIOS } from "../constants/scenarios";
+import { REPORTAGE_SCENARIOS, type LegacyCard } from "../constants/scenarios";
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 const genAI = new GoogleGenerativeAI(API_KEY);
@@ -82,12 +82,33 @@ export async function generateGameCard(gameState: GameState): Promise<Partial<Ca
   }
 }
 
-function getMockCard(stage: HeroPathStage): Partial<Card> {
+function legacyToCard(legacy: LegacyCard, stage: HeroPathStage): Card {
+  return {
+    id: `reportage-${stage}-${Date.now()}`,
+    title: legacy.title,
+    character: legacy.character,
+    image: legacy.image || '',
+    text: legacy.text,
+    leftChoice: {
+      text: legacy.leftChoice.text,
+      line: legacy.leftChoice.line,
+      effects: {
+        statEffect: legacy.leftChoice.effect
+      }
+    },
+    rightChoice: {
+      text: legacy.rightChoice.text,
+      line: legacy.rightChoice.line,
+      effects: {
+        statEffect: legacy.rightChoice.effect
+      }
+    }
+  };
+}
+
+function getMockCard(stage: HeroPathStage): Card {
   const scenarios = REPORTAGE_SCENARIOS[stage];
   const randomScenario = scenarios[Math.floor(Math.random() * scenarios.length)];
 
-  return {
-    ...randomScenario,
-    id: `reportage-${stage}-${Date.now()}`
-  };
+  return legacyToCard(randomScenario, stage);
 }
