@@ -2,8 +2,7 @@ import React from 'react';
 import { motion, useMotionValue, useTransform } from 'framer-motion';
 import type { PanInfo } from 'framer-motion';
 import type { Card } from '../types';
-import { DETAILED_CHARACTERS } from '../constants/characters';
-import { Briefcase, PlayCircle, Landmark, GraduationCap, Umbrella, Crown } from 'lucide-react';
+import PaperAvatar from './PaperAvatar';
 
 interface GameCardProps {
     card: Card;
@@ -28,28 +27,6 @@ const GameCard: React.FC<GameCardProps> = ({ card, onSwipe }) => {
         }
     };
 
-    // Extract Lucide Icon and Color based on character (Paper Cutout Style)
-    const getCharacterRender = (job: string) => {
-        const character = Object.values(DETAILED_CHARACTERS).find(char => char.job === job);
-
-        switch (character?.id) {
-            case 'PARK_BOKDEOK':
-                return <Briefcase size={120} strokeWidth={1} className="text-blue-700 fill-blue-100 paper-cutout" />;
-            case 'KIM_YOUNGKKEUL':
-                return <PlayCircle size={120} strokeWidth={1} className="text-red-600 fill-red-100 paper-cutout" />;
-            case 'LEE_DAECHUL':
-                return <Landmark size={120} strokeWidth={1} className="text-gray-600 fill-gray-100 paper-cutout" />;
-            case 'GANGNAM_UMMA':
-                return <GraduationCap size={120} strokeWidth={1} className="text-purple-700 fill-purple-100 paper-cutout" />;
-            case 'JEONSE_REFUGEE':
-                return <Umbrella size={120} strokeWidth={1} className="text-cyan-700 fill-cyan-100 paper-cutout" />;
-            case 'BUILDING_HALMAE':
-                return <Crown size={120} strokeWidth={1} className="text-yellow-600 fill-yellow-100 paper-cutout" />;
-            default:
-                return <Briefcase size={120} strokeWidth={1} className="text-gray-500 fill-gray-100 paper-cutout" />;
-        }
-    };
-
     return (
         <div className="relative w-full max-w-sm h-[600px] flex items-center justify-center perspective-1000">
             {/* Background/Deck Stack Effect */}
@@ -67,9 +44,9 @@ const GameCard: React.FC<GameCardProps> = ({ card, onSwipe }) => {
                     {/* Visual Header - Paper Texture Background */}
                     <div className="relative h-3/5 w-full bg-[#f0f0f0] overflow-hidden flex items-center justify-center paper-texture border-b border-gray-200">
 
-                        {/* Paper Cutout Avatar (Lucide Icon) */}
-                        <div className="relative z-10 p-6 bg-white/30 rounded-full backdrop-blur-sm border border-white/40 shadow-inner">
-                            {getCharacterRender(card.character.job)}
+                        {/* Geometric Paper Avatar */}
+                        <div className="relative z-10 w-full h-full flex items-center justify-center p-4">
+                            <PaperAvatar job={card.character.job} className="w-56 h-56" />
                         </div>
 
                         {/* Hint Overlay (Left/Right) */}
