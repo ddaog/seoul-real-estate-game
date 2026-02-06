@@ -10,80 +10,89 @@ interface GameCardProps {
 }
 
 const GameCard: React.FC<GameCardProps> = ({ card, onSwipe }) => {
+    // Motion values for drag gesture
     const x = useMotionValue(0);
-    const rotate = useTransform(x, [-200, 200], [-30, 30]);
-    const opacityLeft = useTransform(x, [-150, 0], [1, 0]);
-    const opacityRight = useTransform(x, [0, 150], [0, 1]);
+    const rotate = useTransform(x, [-200, 200], [-25, 25]);
+    const opacity = useTransform(x, [-200, -150, 0, 150, 200], [0, 1, 1, 1, 0]);
 
-    const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-        if (info.offset.x > 100) {
-            onSwipe('right');
-        } else if (info.offset.x < -100) {
+    // Opacity for swipe hints (Like/Dislike overlays)
+    const opacityLeft = useTransform(x, [0, 100], [0, 1]);
+    const opacityRight = useTransform(x, [-100, 0], [1, 0]);
+
+    const handleDragEnd = (_: any, info: PanInfo) => {
+        if (info.offset.x < -100) {
             onSwipe('left');
+        } else if (info.offset.x > 100) {
+            onSwipe('right');
         }
     };
 
-    // Extract emoji from character based on their profile
-    const getCharacterEmoji = (job: string): string => {
-        // Match by job from DETAILED_CHARACTERS
+    // Extract folded paper art class based on character
+    const getCharacterPaperClass = (job: string): string => {
         const character = Object.values(DETAILED_CHARACTERS).find(char => char.job === job);
-        return character?.emoji || '🗣️';
+
+        switch (character?.id) {
+            case 'PARK_BOKDEOK': return 'origami-building';
+            case 'KIM_YOUNGKKEUL': return 'origami-play';
+            case 'LEE_DAECHUL': return 'origami-bank';
+            case 'GANGNAM_UMMA': return 'origami-fan';
+            case 'JEONSE_REFUGEE': return 'origami-crumpled';
+            case 'BUILDING_HALMAE': return 'origami-crown';
+            default: return 'origami-shape';
+        }
     };
 
     return (
-        <div className="relative w-full max-w-sm h-[600px] flex items-center justify-center">
+        <div className="relative w-full max-w-sm h-[600px] flex items-center justify-center perspective-1000">
             {/* Background/Deck Stack Effect */}
-            <div className="absolute top-0 w-full h-full bg-gray-800 rounded-xl transform translate-x-2 translate-y-2 opacity-50"></div>
+            <div className="absolute top-0 w-80 h-[500px] bg-gray-200 rounded-xl transform translate-x-2 translate-y-2 opacity-50 border border-gray-300"></div>
 
             <motion.div
+                style={{ x, rotate, opacity }}
                 drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.7}
-                style={{ x, rotate }}
                 onDragEnd={handleDragEnd}
-                className="relative w-full h-full bg-white rounded-xl shadow-2xl overflow-hidden cursor-grab active:cursor-grabbing border border-gray-200"
+                className="absolute w-80 h-[500px] cursor-grab active:cursor-grabbing perspective-1000"
             >
-                {/* Character Emoji Area */}
-                <div className="relative h-3/5 w-full bg-gradient-to-br from-blue-50 to-purple-50 overflow-hidden flex items-center justify-center">
-                    <div className="text-[180px] select-none opacity-90">
-                        {getCharacterEmoji(card.character.job)}
+                <div className="w-full h-full paper-card rounded-xl overflow-hidden flex flex-col relative folded-corner bg-[#faf9f6]">
+                    {/* Visual Header - Paper Texture Background */}
+                    <div className="relative h-3/5 w-full bg-[#f0f0f0] overflow-hidden flex items-center justify-center paper-texture border-b border-gray-200">
+
+                        {/* Origami Avatar */}
+                        <div className={`w-48 h-48 shadow-inner transition-transform duration-500 hover:scale-105 ${getCharacterPaperClass(card.character.job)}`} />
+
+                        {/* Hint Overlay (Left/Right) */}
+                        <motion.div
+                            style={{ opacity: opacityLeft }}
+                            className="absolute inset-0 bg-blue-500/10 flex items-center justify-center pointer-events-none z-10"
+                        >
+                            <div className="bg-white/90 px-6 py-3 rounded-lg shadow-xl transform roate-12 border-2 border-blue-500 text-blue-600 font-bold text-xl -rotate-12">
+                                {card.rightChoice.text}
+                            </div>
+                        </motion.div>
+
+                        <motion.div
+                            style={{ opacity: opacityRight }}
+                            className="absolute inset-0 bg-red-500/10 flex items-center justify-center pointer-events-none z-10"
+                        >
+                            <div className="bg-white/90 px-6 py-3 rounded-lg shadow-xl transform rotate-12 border-2 border-red-500 text-red-600 font-bold text-xl">
+                                {card.leftChoice.text}
+                            </div>
+                        </motion.div>
                     </div>
 
-                    {/* Swipe Overlays */}
-                    <motion.div
-                        style={{ opacity: opacityRight }}
-                        className="absolute top-4 left-4 border-4 border-green-500 rounded-lg p-2 transform -rotate-12 z-10 bg-white/90"
-                    >
-                        <span className="text-2xl font-bold text-green-500 uppercase tracking-widest">
-                            {card.rightChoice.text}
-                        </span>
-                    </motion.div>
-
-                    <motion.div
-                        style={{ opacity: opacityLeft }}
-                        className="absolute top-4 right-4 border-4 border-red-500 rounded-lg p-2 transform rotate-12 z-10 bg-white/90"
-                    >
-                        <span className="text-2xl font-bold text-red-500 uppercase tracking-widest">
-                            {card.leftChoice.text}
-                        </span>
-                    </motion.div>
-                </div>
-
-                {/* Text/Content Area */}
-                <div className="h-2/5 p-6 flex flex-col justify-between bg-white text-gray-900">
-                    <div>
-                        <h2 className="text-xl font-bold mb-1 flex items-center gap-2">
-                            <span className="text-2xl">{getCharacterEmoji(card.character.job)}</span>
+                    {/* Text Area */}
+                    <div className="flex-1 p-6 flex flex-col items-center justify-center text-center bg-[#faf9f6] paper-texture relative z-20">
+                        <h3 className="font-bold text-lg mb-2 text-gray-800 border-b-2 border-gray-200 pb-1 w-full">
                             {card.character.name}
-                            <span className="text-sm font-normal text-gray-500">({card.character.job})</span>
-                        </h2>
-                        <div className="w-full h-px bg-gray-200 my-2"></div>
-                        <p className="text-lg leading-relaxed font-medium break-keep">
-                            "{card.text}"
+                            <span className="text-xs font-normal text-gray-500 ml-2 block sm:inline">
+                                {card.character.job}
+                            </span>
+                        </h3>
+                        <p className="text-gray-700 leading-relaxed font-medium whitespace-pre-wrap">
+                            {card.text}
                         </p>
-                    </div>
-
-                    <div className="text-center text-sm text-gray-400 mt-4">
-                        👈 좌우로 밀어서 선택하세요 👉
                     </div>
                 </div>
             </motion.div>

@@ -6,16 +6,14 @@ interface StatBarProps {
 }
 
 const StatIcon = ({ type, value }: { type: string, value: number }) => {
-    let icon = '';
-    let color = '';
+    const config: Record<string, { icon: string, color: string, bgColor: string }> = {
+        asset: { icon: '💰', color: 'text-yellow-500', bgColor: 'bg-yellow-500' },
+        mental: { icon: '🧠', color: 'text-blue-500', bgColor: 'bg-blue-500' },
+        fomo: { icon: '😱', color: 'text-red-500', bgColor: 'bg-red-500' },
+        regulation: { icon: '⚖️', color: 'text-gray-700', bgColor: 'bg-gray-700' }
+    };
 
-    // Determine icon and color based on type
-    switch (type) {
-        case 'asset': icon = '💰'; color = 'text-yellow-500'; break;
-        case 'mental': icon = '🧠'; color = 'text-blue-500'; break;
-        case 'fomo': icon = '😱'; color = 'text-red-500'; break;
-        case 'regulation': icon = '⚖️'; color = 'text-gray-700'; break;
-    }
+    const { icon, bgColor } = config[type] || { icon: '❓', color: 'text-gray-400', bgColor: 'bg-gray-400' };
 
     // Visual feedback for fullness (simplified for now)
     const height = Math.max(10, Math.min(100, value));
@@ -25,7 +23,7 @@ const StatIcon = ({ type, value }: { type: string, value: number }) => {
             <div className="text-2xl">{icon}</div>
             <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div
-                    className={`h-full transition-all duration-300 ${color.replace('text', 'bg')}`}
+                    className={`h-full transition-all duration-300 ${bgColor}`}
                     style={{ width: `${height}%` }}
                 ></div>
             </div>
