@@ -43,12 +43,30 @@ export type HeroPathStage =
     | 'RESURRECTION'
     | 'RETURN_WITH_ELIXIR';
 
+export interface Passive {
+    id: string;
+    name: string;
+    description: string;
+    icon: string;
+    type: 'buff' | 'debuff';
+    conditionDescription: string;
+}
+
+export interface Achievement {
+    id: string;
+    name: string;
+    description: string;
+    icon: string;
+}
+
 export interface GameState {
     stats: Stats;
     currentCard: Card | null;
     day: number;
     stage: HeroPathStage;
-    items: string[]; // Acquired passive items/buffs
+    items: string[]; // Deprecated, use passives
+    passives: string[]; // Active passive IDs
+    achievements: string[]; // Unlocked achievement IDs
     isGameOver: boolean;
     gameOverReason?: string;
 }
