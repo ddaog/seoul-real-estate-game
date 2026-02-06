@@ -19,7 +19,7 @@ const GameCard: React.FC<GameCardProps> = ({ card, onSwipe }) => {
     const opacityLeft = useTransform(x, [0, 100], [0, 1]);
     const opacityRight = useTransform(x, [-100, 0], [1, 0]);
 
-    const handleDragEnd = (_: any, info: PanInfo) => {
+    const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
         if (info.offset.x < -100) {
             onSwipe('left');
         } else if (info.offset.x > 100) {

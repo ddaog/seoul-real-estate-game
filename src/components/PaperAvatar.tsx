@@ -6,41 +6,41 @@ interface PaperAvatarProps {
     className?: string;
 }
 
+// Common defs for reusable filters and patterns
+const Defs = () => (
+    <defs>
+        <filter id="paper-shadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="4" stdDeviation="3" floodColor="rgba(0,0,0,0.3)" />
+        </filter>
+        <filter id="inner-texture">
+            <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch" />
+            <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.15 0" />
+            <feComposite operator="in" in2="SourceGraphic" />
+        </filter>
+        <pattern id="grain-pattern" width="100" height="100" patternUnits="userSpaceOnUse">
+            <rect width="100" height="100" fillOpacity="0.1" filter="url(#inner-texture)" />
+        </pattern>
+    </defs>
+);
+
+// Helper for textured shapes
+const TexturedPath = ({ d, fill, className }: { d: string, fill: string, className?: string }) => (
+    <g filter="url(#paper-shadow)">
+        <path d={d} fill={fill} className={className} />
+        <path d={d} fill="url(#grain-pattern)" style={{ mixBlendMode: 'multiply' }} />
+    </g>
+);
+
+const TexturedCircle = ({ cx, cy, r, fill }: { cx: number, cy: number, r: number, fill: string }) => (
+    <g filter="url(#paper-shadow)">
+        <circle cx={cx} cy={cy} r={r} fill={fill} />
+        <circle cx={cx} cy={cy} r={r} fill="url(#grain-pattern)" style={{ mixBlendMode: 'multiply' }} />
+    </g>
+);
+
 const PaperAvatar: React.FC<PaperAvatarProps> = ({ job, className = "" }) => {
     const character = Object.values(DETAILED_CHARACTERS).find(char => char.job === job);
     if (!character) return null;
-
-    // Common defs for reusable filters and patterns
-    const Defs = () => (
-        <defs>
-            <filter id="paper-shadow" x="-50%" y="-50%" width="200%" height="200%">
-                <feDropShadow dx="0" dy="4" stdDeviation="3" floodColor="rgba(0,0,0,0.3)" />
-            </filter>
-            <filter id="inner-texture">
-                <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch" />
-                <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.15 0" />
-                <feComposite operator="in" in2="SourceGraphic" />
-            </filter>
-            <pattern id="grain-pattern" width="100" height="100" patternUnits="userSpaceOnUse">
-                <rect width="100" height="100" fillOpacity="0.1" filter="url(#inner-texture)" />
-            </pattern>
-        </defs>
-    );
-
-    // Helper for textured shapes
-    const TexturedPath = ({ d, fill, className }: { d: string, fill: string, className?: string }) => (
-        <g filter="url(#paper-shadow)">
-            <path d={d} fill={fill} className={className} />
-            <path d={d} fill="url(#grain-pattern)" style={{ mixBlendMode: 'multiply' }} />
-        </g>
-    );
-
-    const TexturedCircle = ({ cx, cy, r, fill }: { cx: number, cy: number, r: number, fill: string }) => (
-        <g filter="url(#paper-shadow)">
-            <circle cx={cx} cy={cy} r={r} fill={fill} />
-            <circle cx={cx} cy={cy} r={r} fill="url(#grain-pattern)" style={{ mixBlendMode: 'multiply' }} />
-        </g>
-    );
 
     const renderCharacter = () => {
         switch (character.id) {

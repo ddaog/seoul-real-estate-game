@@ -1,5 +1,35 @@
-import type { GameState, Stats } from '../types';
+import type { Choice, ChoiceEffect, GameState, Stats } from '../types';
 import { MIN_STAT, MAX_STAT } from '../constants';
+
+const COUNTER_KEYS = {
+    asset80Streak: 'asset80Streak',
+    mentalLowSurvived: 'mentalLowSurvived',
+    regulationChoiceCount: 'regulationChoiceCount',
+    fomoResistCount: 'fomoResistCount',
+    debtChoiceStreak: 'debtChoiceStreak',
+    youngkkeulFollowCount: 'youngkkeulFollowCount',
+    youngkkeulRejectCount: 'youngkkeulRejectCount',
+    crashHoldCount: 'crashHoldCount',
+    regulationEndureCount: 'regulationEndureCount'
+} as const;
+
+const getCounter = (counters: Record<string, number>, key: string) => counters[key] || 0;
+
+/**
+ * Normalize legacy and current choice effect shapes.
+ */
+export const normalizeChoiceEffect = (choice: Choice): ChoiceEffect => {
+    const legacyNext = (choice.effects as ChoiceEffect & { next?: string })?.next;
+    return {
+        ...choice.effects,
+        statEffect: choice.effects?.statEffect || choice.effect || {},
+        nextCardId: choice.effects?.nextCardId || choice.nextCardId || legacyNext,
+        addFlags: choice.effects?.addFlags || [],
+        removeFlags: choice.effects?.removeFlags || [],
+        setFlags: choice.effects?.setFlags || undefined,
+        tags: choice.effects?.tags || []
+    };
+};
 
 /**
  * Calculates the final stat changes applying passive modifiers
@@ -9,7 +39,7 @@ export const calculateStatChanges = (
     effect: Partial<Stats>,
     activePassives: string[]
 ): Stats => {
-    let modifiedEffect = { ...effect };
+    const modifiedEffect = { ...effect };
 
     // 1. WEALTHY_EXPERT: Asset increase +20%
     if (activePassives.includes('WEALTHY_EXPERT')) {
@@ -27,8 +57,7 @@ export const calculateStatChanges = (
 
     // 3. POLICY_MASTER: Regulation penalties -50%
     if (activePassives.includes('POLICY_MASTER')) {
-        if (modifiedEffect.regulation && modifiedEffect.regulation > 0) { // Regulation inc is usually bad/good? Context dependent. Assuming penalty is decrease or increase?
-            // Regulation usually: High is bad (more Restrictions). So if effect adds regulation, reduce it.
+        if (modifiedEffect.regulation && modifiedEffect.regulation > 0) {
             modifiedEffect.regulation = Math.round(modifiedEffect.regulation * 0.5);
         }
     }
@@ -47,17 +76,14 @@ export const calculateStatChanges = (
         }
     }
 
-    // 6. YOUTUBE_SLAVE: FOMO +5 extra per turn (Handled in per-turn logic or here if effect has FOMO)
-    // Let's apply it if the effect has ANY fomo increase
+    // 6. YOUTUBE_SLAVE: FOMO +5 extra per turn
     if (activePassives.includes('YOUTUBE_SLAVE')) {
         if (modifiedEffect.fomo && modifiedEffect.fomo > 0) {
             modifiedEffect.fomo += 5;
         }
     }
 
-    // 7. TAX_TARGET: Asset -10 flat (Handled in turn logic usually, but here if triggered)
-    // We'll leave per-turn drains for a separate logic if needed, or apply on every swipe.
-    // For simplicity, let's apply small drain on every swipe if active
+    // 7. TAX_TARGET: Asset -2 flat per swipe
     if (activePassives.includes('TAX_TARGET')) {
         modifiedEffect.asset = (modifiedEffect.asset || 0) - 2;
     }
@@ -70,50 +96,112 @@ export const calculateStatChanges = (
     };
 };
 
+export const applyChoiceSideEffects = (
+    gameState: GameState,
+    effect: ChoiceEffect,
+    nextStats: Stats
+) => {
+    const nextFlags = new Set(gameState.flags);
+
+    if (effect.setFlags && effect.setFlags.length > 0) {
+        nextFlags.clear();
+        effect.setFlags.forEach(flag => nextFlags.add(flag));
+    }
+    (effect.addFlags || []).forEach(flag => nextFlags.add(flag));
+    (effect.removeFlags || []).forEach(flag => nextFlags.delete(flag));
+
+    const nextCounters: Record<string, number> = { ...gameState.counters };
+
+    if (effect.statEffect?.regulation !== undefined) {
+        nextCounters[COUNTER_KEYS.regulationChoiceCount] = getCounter(nextCounters, COUNTER_KEYS.regulationChoiceCount) + 1;
+    }
+
+    const tags = effect.tags || [];
+
+    if (tags.includes('fomo_resist') && nextStats.fomo >= 80) {
+        nextCounters[COUNTER_KEYS.fomoResistCount] = getCounter(nextCounters, COUNTER_KEYS.fomoResistCount) + 1;
+    }
+
+    if (tags.includes('debt')) {
+        nextCounters[COUNTER_KEYS.debtChoiceStreak] = getCounter(nextCounters, COUNTER_KEYS.debtChoiceStreak) + 1;
+    } else {
+        nextCounters[COUNTER_KEYS.debtChoiceStreak] = 0;
+    }
+
+    if (tags.includes('youngkkeul_follow')) {
+        nextCounters[COUNTER_KEYS.youngkkeulFollowCount] = getCounter(nextCounters, COUNTER_KEYS.youngkkeulFollowCount) + 1;
+    }
+
+    if (tags.includes('youngkkeul_reject')) {
+        nextCounters[COUNTER_KEYS.youngkkeulRejectCount] = getCounter(nextCounters, COUNTER_KEYS.youngkkeulRejectCount) + 1;
+    }
+
+    if (tags.includes('crash_hold')) {
+        nextCounters[COUNTER_KEYS.crashHoldCount] = getCounter(nextCounters, COUNTER_KEYS.crashHoldCount) + 1;
+    }
+
+    if (tags.includes('regulation_endure')) {
+        nextCounters[COUNTER_KEYS.regulationEndureCount] = getCounter(nextCounters, COUNTER_KEYS.regulationEndureCount) + 1;
+    }
+
+    if (nextStats.asset >= 80) {
+        nextCounters[COUNTER_KEYS.asset80Streak] = getCounter(nextCounters, COUNTER_KEYS.asset80Streak) + 1;
+    } else {
+        nextCounters[COUNTER_KEYS.asset80Streak] = 0;
+    }
+
+    if (nextStats.mental <= 20) {
+        nextCounters[COUNTER_KEYS.mentalLowSurvived] = 1;
+    }
+
+    const nextPropertyCount = Math.max(0, gameState.propertyCount + (effect.addProperties || 0));
+
+    return {
+        flags: Array.from(nextFlags),
+        counters: nextCounters,
+        propertyCount: nextPropertyCount,
+        nextCardId: effect.nextCardId,
+        activeDeck: effect.setDeck || gameState.activeDeck,
+        deckLockTurns: effect.setDeck ? (effect.deckLockTurns || 2) : gameState.deckLockTurns
+    };
+};
+
 /**
  * Checks and returns new passives to be added based on game state
  */
 export const checkNewPassives = (gameState: GameState): string[] => {
     const newPassives: string[] = [];
-    const { stats, passives } = gameState;
+    const { passives, counters, propertyCount } = gameState;
 
-    // Helper to check if not already owned
     const canAcquire = (id: string) => !passives.includes(id) && !newPassives.includes(id);
 
-    // WEALTHY_EXPERT: Asset >= 80
-    if (canAcquire('WEALTHY_EXPERT') && stats.asset >= 80) {
+    if (canAcquire('WEALTHY_EXPERT') && getCounter(counters, COUNTER_KEYS.asset80Streak) >= 5) {
         newPassives.push('WEALTHY_EXPERT');
     }
 
-    // MENTAL_TOUGHNESS: Mental <= 20
-    if (canAcquire('MENTAL_TOUGHNESS') && stats.mental <= 20) {
+    if (canAcquire('MENTAL_TOUGHNESS') && getCounter(counters, COUNTER_KEYS.mentalLowSurvived) >= 1) {
         newPassives.push('MENTAL_TOUGHNESS');
     }
 
-    // POLICY_MASTER: Regulation >= 80 (Simplified condition)
-    if (canAcquire('POLICY_MASTER') && stats.regulation >= 80) {
+    if (canAcquire('POLICY_MASTER') && getCounter(counters, COUNTER_KEYS.regulationChoiceCount) >= 20) {
         newPassives.push('POLICY_MASTER');
     }
 
-    // FOMO_ESCAPE: FOMO >= 80 (Simplified)
-    // Note: Complex history tracking (e.g. "consecutive choices") is omitted for MVP stability
-    if (canAcquire('FOMO_ESCAPE') && stats.fomo >= 80) {
-        // Logic: If they survived high FOMO? 
-        // For now, let's give it if they have High FOMO but high Mental (managing it well)
-        if (stats.mental >= 60) newPassives.push('FOMO_ESCAPE');
+    if (canAcquire('FOMO_ESCAPE') && getCounter(counters, COUNTER_KEYS.fomoResistCount) >= 3) {
+        newPassives.push('FOMO_ESCAPE');
     }
 
-    // DEBT_ADDICT: Asset <= 20 (Low asset = high debt roughly in this game context)
-    if (canAcquire('DEBT_ADDICT') && stats.asset <= 20) {
+    if (canAcquire('DEBT_ADDICT') && getCounter(counters, COUNTER_KEYS.debtChoiceStreak) >= 10) {
         newPassives.push('DEBT_ADDICT');
     }
 
-    // TAX_TARGET: Asset >= 90 (High asset = tax target)
-    if (canAcquire('TAX_TARGET') && stats.asset >= 90) {
-        newPassives.push('TAX_TARGET');
+    if (canAcquire('YOUTUBE_SLAVE') && getCounter(counters, COUNTER_KEYS.youngkkeulFollowCount) >= 5) {
+        newPassives.push('YOUTUBE_SLAVE');
     }
 
-    // YOUTUBE_SLAVE & OTHERS: Could be triggered by specific card IDs in the future
+    if (canAcquire('TAX_TARGET') && propertyCount >= 3) {
+        newPassives.push('TAX_TARGET');
+    }
 
     return newPassives;
 };
@@ -123,27 +211,43 @@ export const checkNewPassives = (gameState: GameState): string[] => {
  */
 export const checkNewAchievements = (gameState: GameState): string[] => {
     const newAchievements: string[] = [];
-    const { stats, achievements, stage } = gameState;
+    const { stats, achievements, flags, counters, propertyCount } = gameState;
     const canUnlock = (id: string) => !achievements.includes(id) && !newAchievements.includes(id);
 
-    // FIRST_HOME: Crossing Threshold Stage or Asset check
-    if (canUnlock('FIRST_HOME') && stage === 'CROSSING_THRESHOLD') {
+    if (canUnlock('FIRST_HOME') && propertyCount >= 1) {
         newAchievements.push('FIRST_HOME');
     }
 
-    // GANGNAM_CONQUEST: High Asset + Specific Stage
-    if (canUnlock('GANGNAM_CONQUEST') && stats.asset >= 90 && stage === 'REWARD') {
+    if (canUnlock('GANGNAM_CONQUEST') && flags.includes('OWN_GANGNAM')) {
         newAchievements.push('GANGNAM_CONQUEST');
     }
 
-    // POLICY_SURVIVOR: Surviving High Regulation
-    if (canUnlock('POLICY_SURVIVOR') && stats.regulation >= 90 && stats.mental >= 50) {
+    if (canUnlock('BUILDING_KING') && flags.includes('OWN_COMMERCIAL')) {
+        newAchievements.push('BUILDING_KING');
+    }
+
+    if (canUnlock('MASTER_OF_HOLDING') && getCounter(counters, COUNTER_KEYS.crashHoldCount) >= 5) {
+        newAchievements.push('MASTER_OF_HOLDING');
+    }
+
+    if (canUnlock('POLICY_SURVIVOR') && getCounter(counters, COUNTER_KEYS.regulationEndureCount) >= 3) {
         newAchievements.push('POLICY_SURVIVOR');
     }
 
-    // MASTER_OF_HOLDING: Surviving Low Asset (Crash)
-    if (canUnlock('MASTER_OF_HOLDING') && stats.asset <= 10 && stats.mental >= 50) {
-        newAchievements.push('MASTER_OF_HOLDING');
+    if (canUnlock('FOMO_CONQUEROR') && flags.includes('GAME_CLEAR') && stats.fomo >= 90) {
+        newAchievements.push('FOMO_CONQUEROR');
+    }
+
+    if (canUnlock('DISCIPLE_OF_BOKDEOK')
+        && flags.includes('BOKDEOK_1')
+        && flags.includes('BOKDEOK_2')
+        && flags.includes('BOKDEOK_3')
+    ) {
+        newAchievements.push('DISCIPLE_OF_BOKDEOK');
+    }
+
+    if (canUnlock('UNSUBSCRIBE_YOUNGKKEUL') && getCounter(counters, COUNTER_KEYS.youngkkeulRejectCount) >= 10) {
+        newAchievements.push('UNSUBSCRIBE_YOUNGKKEUL');
     }
 
     return newAchievements;

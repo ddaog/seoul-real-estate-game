@@ -1,5 +1,20 @@
-import type { Card, HeroPathStage } from '../types';
+import type { Character, HeroPathStage, Stats } from '../types';
 import { CHARACTERS } from './characters';
+
+type LegacyChoice = {
+    text: string;
+    line?: string;
+    effect: Partial<Stats>;
+};
+
+type LegacyCard = {
+    title?: string;
+    text: string;
+    character: Character;
+    image?: string;
+    leftChoice: LegacyChoice;
+    rightChoice: LegacyChoice;
+};
 
 /**
  * Reportage-style scenarios (르포타주 소설 스타일)
@@ -10,7 +25,7 @@ import { CHARACTERS } from './characters';
  * - Character-specific dialogue
  */
 
-export const REPORTAGE_SCENARIOS: Record<HeroPathStage, Array<Partial<Card>>> = {
+export const REPORTAGE_SCENARIOS: Record<HeroPathStage, Array<LegacyCard>> = {
     ORDINARY_WORLD: [
         {
             text: `목요일 저녁 7시 32분, 핸드폰이 울렸다.

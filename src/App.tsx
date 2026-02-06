@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
-import type { GameState, Card, HeroPathStage } from './types';
+import { useState } from 'react';
+import type { GameState, HeroPathStage } from './types';
 import { INITIAL_STATS, HERO_PATH_ORDER, STAGE_DESCRIPTIONS } from './constants';
-import { generateGameCard } from './services/geminiService';
-import { calculateStatChanges, checkNewPassives, checkNewAchievements } from './services/gameLogic';
+import { drawNextCard, getCardById } from './services/deckService';
+import { applyChoiceSideEffects, calculateStatChanges, checkNewPassives, checkNewAchievements, normalizeChoiceEffect } from './services/gameLogic';
 import GameCard from './components/GameCard';
 import StatBar from './components/StatBar';
 import PassiveDisplay from './components/PassiveDisplay';
@@ -10,35 +10,32 @@ import AchievementPanel from './components/AchievementPanel';
 import { RefreshCw, Trophy } from 'lucide-react';
 
 function App() {
-  const [gameState, setGameState] = useState<GameState>({
-    stats: { ...INITIAL_STATS },
-    currentCard: null,
-    day: 1,
-    stage: 'ORDINARY_WORLD',
-    passives: [],
-    achievements: [],
-    items: [], // Deprecated, keeping to satisfy type if needed, or better remove if type updated
-    isGameOver: false
-  });
+  const createInitialState = (): GameState => {
+    const baseState: GameState = {
+      stats: { ...INITIAL_STATS },
+      currentCard: null,
+      day: 1,
+      stage: 'ORDINARY_WORLD',
+      passives: [],
+      achievements: [],
+      items: [], // Deprecated, keeping to satisfy type if needed, or better remove if type updated
+      flags: [],
+      counters: {},
+      propertyCount: 0,
+      recentCards: [],
+      activeDeck: 'main',
+      deckLockTurns: 0,
+      isGameOver: false
+    };
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [showAchievements, setShowAchievements] = useState(false);
-
-  // Initial Load
-  useEffect(() => {
-    loadNewCard();
-  }, []);
-
-  const loadNewCard = async () => {
-    setIsLoading(true);
-    const newCard = await generateGameCard(gameState);
-
-    setGameState(prev => ({
-      ...prev,
-      currentCard: newCard as Card // Casting for now, safety needed in prod
-    }));
-    setIsLoading(false);
+    return {
+      ...baseState,
+      currentCard: drawNextCard(baseState)
+    };
   };
+
+  const [gameState, setGameState] = useState<GameState>(createInitialState);
+  const [showAchievements, setShowAchievements] = useState(false);
 
   const updateStage = (day: number): HeroPathStage => {
     // Simple logic: advance stage every 10 days, maxing out at last stage
@@ -53,10 +50,21 @@ function App() {
     if (!gameState.currentCard || gameState.isGameOver) return;
 
     const choice = direction === 'left' ? gameState.currentCard.leftChoice : gameState.currentCard.rightChoice;
+    const effect = normalizeChoiceEffect(choice);
 
     setGameState(prev => {
+      if (!prev.currentCard) return prev;
+      if (prev.currentCard.type === 'ending') {
+        return {
+          ...prev,
+          isGameOver: true,
+          gameOverReason: prev.currentCard.title || '이야기의 끝에 도달했습니다.',
+          currentCard: null
+        };
+      }
+
       // 1. Calculate new stats with passive modifiers
-      const newStats = calculateStatChanges(prev.stats, choice.effect, prev.passives);
+      const newStats = calculateStatChanges(prev.stats, effect.statEffect || {}, prev.passives);
 
       // Check Game Over Conditions
       let isGameOver = false;
@@ -71,12 +79,39 @@ function App() {
       const newStage = updateStage(newDay);
 
       // Temporary state for checking conditions
-      const tempState = {
+      const sideEffects = applyChoiceSideEffects(prev, effect, newStats);
+      const nextDeckLockTurns = effect.setDeck
+        ? sideEffects.deckLockTurns
+        : Math.max(0, sideEffects.deckLockTurns - 1);
+
+      const recentCards = [prev.currentCard.id, ...prev.recentCards].slice(0, 10);
+
+      const tempState: GameState = {
         ...prev,
         stats: newStats,
         day: newDay,
-        stage: newStage
+        stage: newStage,
+        flags: sideEffects.flags,
+        counters: sideEffects.counters,
+        propertyCount: sideEffects.propertyCount,
+        recentCards,
+        activeDeck: sideEffects.activeDeck,
+        deckLockTurns: nextDeckLockTurns,
+        nextCardId: sideEffects.nextCardId
       };
+
+      const shouldClear = !tempState.flags.includes('GAME_CLEAR')
+        && newStage === 'RETURN_WITH_ELIXIR'
+        && newStats.asset >= 70
+        && newStats.mental >= 60
+        && newStats.fomo <= 80
+        && newStats.regulation <= 80
+        && newDay >= 40;
+
+      if (!isGameOver && shouldClear) {
+        tempState.flags = [...tempState.flags, 'GAME_CLEAR'];
+        tempState.nextCardId = 'END-001';
+      }
 
       // 2. Check for new Passives
       const newlyAcquiredPassives = checkNewPassives(tempState);
@@ -86,39 +121,39 @@ function App() {
       const newlyUnlockedAchievements = checkNewAchievements({ ...tempState, passives: finalPassives });
       const finalAchievements = [...prev.achievements, ...newlyUnlockedAchievements];
 
-      return {
+      const nextState: GameState = {
         ...prev,
         stats: newStats,
         day: newDay,
         stage: newStage,
+        flags: tempState.flags,
+        counters: tempState.counters,
+        propertyCount: tempState.propertyCount,
+        recentCards: tempState.recentCards,
+        activeDeck: tempState.activeDeck,
+        deckLockTurns: tempState.deckLockTurns,
+        nextCardId: tempState.nextCardId,
         passives: finalPassives,
         achievements: finalAchievements,
         isGameOver,
         gameOverReason: reason,
-        currentCard: null // Clear card to trigger loader or next card
+        currentCard: null
+      };
+
+      const nextCard = isGameOver
+        ? null
+        : (nextState.nextCardId ? getCardById(nextState.nextCardId) : drawNextCard(nextState));
+
+      return {
+        ...nextState,
+        currentCard: nextCard,
+        nextCardId: undefined
       };
     });
   };
 
-  // Effect to load next card after state update if not game over
-  useEffect(() => {
-    if (!gameState.currentCard && !gameState.isGameOver) {
-      loadNewCard();
-    }
-  }, [gameState.currentCard, gameState.isGameOver]);
-
   const restartGame = () => {
-    setGameState({
-      stats: { ...INITIAL_STATS },
-      currentCard: null,
-      day: 1,
-      stage: 'ORDINARY_WORLD',
-      passives: [],
-      achievements: [],
-      items: [],
-      isGameOver: false
-    });
-    // Triggers loadNewCard via logic above since currentCard is null
+    setGameState(createInitialState());
   };
 
   if (gameState.isGameOver) {
@@ -167,7 +202,7 @@ function App() {
 
       {/* Main Card Area */}
       <div className="flex-1 w-full flex items-center justify-center mb-8 z-0">
-        {isLoading || !gameState.currentCard ? (
+        {!gameState.currentCard ? (
           <div className="animate-pulse flex flex-col items-center">
             <div className="w-64 h-96 bg-gray-300 rounded-xl mb-4"></div>
             <p className="text-gray-500">다음 상황을 불러오는 중...</p>
