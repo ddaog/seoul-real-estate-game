@@ -3,6 +3,7 @@ import { motion, useMotionValue, useTransform } from 'framer-motion';
 import type { PanInfo } from 'framer-motion';
 import type { Card } from '../types';
 import { DETAILED_CHARACTERS } from '../constants/characters';
+import { Briefcase, PlayCircle, Landmark, GraduationCap, Umbrella, Crown } from 'lucide-react';
 
 interface GameCardProps {
     card: Card;
@@ -27,18 +28,25 @@ const GameCard: React.FC<GameCardProps> = ({ card, onSwipe }) => {
         }
     };
 
-    // Extract folded paper art class based on character
-    const getCharacterPaperClass = (job: string): string => {
+    // Extract Lucide Icon and Color based on character (Paper Cutout Style)
+    const getCharacterRender = (job: string) => {
         const character = Object.values(DETAILED_CHARACTERS).find(char => char.job === job);
 
         switch (character?.id) {
-            case 'PARK_BOKDEOK': return 'origami-building';
-            case 'KIM_YOUNGKKEUL': return 'origami-play';
-            case 'LEE_DAECHUL': return 'origami-bank';
-            case 'GANGNAM_UMMA': return 'origami-fan';
-            case 'JEONSE_REFUGEE': return 'origami-crumpled';
-            case 'BUILDING_HALMAE': return 'origami-crown';
-            default: return 'origami-shape';
+            case 'PARK_BOKDEOK':
+                return <Briefcase size={120} strokeWidth={1} className="text-blue-700 fill-blue-100 paper-cutout" />;
+            case 'KIM_YOUNGKKEUL':
+                return <PlayCircle size={120} strokeWidth={1} className="text-red-600 fill-red-100 paper-cutout" />;
+            case 'LEE_DAECHUL':
+                return <Landmark size={120} strokeWidth={1} className="text-gray-600 fill-gray-100 paper-cutout" />;
+            case 'GANGNAM_UMMA':
+                return <GraduationCap size={120} strokeWidth={1} className="text-purple-700 fill-purple-100 paper-cutout" />;
+            case 'JEONSE_REFUGEE':
+                return <Umbrella size={120} strokeWidth={1} className="text-cyan-700 fill-cyan-100 paper-cutout" />;
+            case 'BUILDING_HALMAE':
+                return <Crown size={120} strokeWidth={1} className="text-yellow-600 fill-yellow-100 paper-cutout" />;
+            default:
+                return <Briefcase size={120} strokeWidth={1} className="text-gray-500 fill-gray-100 paper-cutout" />;
         }
     };
 
@@ -59,8 +67,10 @@ const GameCard: React.FC<GameCardProps> = ({ card, onSwipe }) => {
                     {/* Visual Header - Paper Texture Background */}
                     <div className="relative h-3/5 w-full bg-[#f0f0f0] overflow-hidden flex items-center justify-center paper-texture border-b border-gray-200">
 
-                        {/* Origami Avatar */}
-                        <div className={`w-48 h-48 shadow-inner transition-transform duration-500 hover:scale-105 ${getCharacterPaperClass(card.character.job)}`} />
+                        {/* Paper Cutout Avatar (Lucide Icon) */}
+                        <div className="relative z-10 p-6 bg-white/30 rounded-full backdrop-blur-sm border border-white/40 shadow-inner">
+                            {getCharacterRender(card.character.job)}
+                        </div>
 
                         {/* Hint Overlay (Left/Right) */}
                         <motion.div
